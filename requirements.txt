@@ -1,0 +1,71 @@
+# Core Deep Learning Framework
+torch>=2.1.0
+torchvision>=0.16.0
+torchaudio>=2.1.0
+
+# Computer Vision Libraries
+opencv-python>=4.8.0
+Pillow>=7.1.0,<10.0.0
+scikit-image>=0.20.0
+
+# Data Processing and Analysis
+numpy>=1.21.0
+pandas>=1.5.0
+scipy>=1.9.0
+matplotlib>=3.6.0
+seaborn>=0.11.0
+
+# Dataset Management and Format Conversion
+pycocotools>=2.0.6
+pyyaml>=6.0
+glob2>=0.7
+
+# Data Augmentation
+albumentations>=1.3.0
+imgaug>=0.4.0
+
+# Development and Interactive Tools
+jupyter>=1.0.0
+jupyterlab>=4.0.0
+ipykernel>=6.20.0
+notebook>=6.5.0
+
+# Code Quality and Formatting
+black>=23.0.0
+flake8>=5.0.0
+isort>=5.10.0
+
+# Development Utilities
+ipython>=8.10.0
+ipdb>=0.13.0
+tqdm>=4.64.0
+python-dotenv>=0.19.0
+
+# GPU monitoring and utilities
+gpustat>=1.1.0
+GPUtil>=1.4.0
+psutil>=5.8.0
+nvidia-ml-py3>=7.352.0
+
+# Visualization and Plotting
+plotly>=5.10.0
+bokeh>=3.0.0
+rich>=13.0.0
+
+# Web Framework and API (for future deployment)
+fastapi>=0.100.0
+uvicorn>=0.20.0
+python-multipart>=0.0.5
+streamlit>=1.20.0,<1.30.0
+
+# Model Serving and Optimization (for future deployment)
+onnx>=1.12.0
+onnxruntime-gpu>=1.14.0
+requests>=2.28.0
+aiofiles>=22.0.0
+
+# Configuration management
+hydra-core>=1.3.0
+
+# Note: Install Detectron2 separately after PyTorch:
+# uv add "detectron2 @ git+https://github.com/facebookresearch/detectron2.git" --no-build-isolation

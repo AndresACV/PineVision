@@ -1,0 +1,131 @@
+# Pineapple Detection Training Configuration
+# Optimized for: High annotation density (73+ per image), RTX 3070, Small objects (148.63 pixels²)
+# Dataset: 176 images, 12,956 annotations total
+
+VERSION: 2
+
+MODEL:
+  META_ARCHITECTURE: "GeneralizedRCNN"
+  BACKBONE:
+    NAME: "build_resnet_fpn_backbone"
+    FREEZE_AT: 2
+  RESNETS:
+    DEPTH: 50
+    
+  # Optimized anchor generator for small pineapples (avg 148.63 pixels²)
+  ANCHOR_GENERATOR:
+    SIZES: [[16], [32], [64], [128], [256]]  # Smaller anchors for small objects
+    ASPECT_RATIOS: [[0.5, 1.0, 2.0]]  # Pineapples are roughly circular/oval
+    
+  # RPN optimized for high annotation density
+  RPN:
+    IN_FEATURES: ["p2", "p3", "p4", "p5", "p6"]
+    PRE_NMS_TOPK_TRAIN: 4000  # Increased for high annotation density
+    POST_NMS_TOPK_TRAIN: 2000  # More proposals needed for 73+ objects per image
+    PRE_NMS_TOPK_TEST: 2000
+    POST_NMS_TOPK_TEST: 1000
+    NMS_THRESH: 0.6  # Slightly lower for dense detections
+    POSITIVE_FRACTION: 0.5
+    BATCH_SIZE_PER_IMAGE: 512  # Increased for high annotation density
+    
+  # ROI heads optimized for small objects and high density
+  ROI_HEADS:
+    NAME: "StandardROIHeads"
+    IN_FEATURES: ["p2", "p3", "p4", "p5"]  # Include p2 for small objects
+    NUM_CLASSES: 1  # Only pineapple class
+    SCORE_THRESH_TEST: 0.3  # Lower threshold for small objects
+    NMS_THRESH_TEST: 0.4  # Lower NMS for dense detections
+    BATCH_SIZE_PER_IMAGE: 1024  # Increased for high annotation density
+    POSITIVE_FRACTION: 0.5  # Balanced positive/negative sampling
+    
+  ROI_BOX_HEAD:
+    NAME: "FastRCNNConvFCHead"
+    POOLER_RESOLUTION: 7
+    POOLER_SAMPLING_RATIO: 2  # Better sampling for small objects
+    NUM_FC: 2
+    FC_DIM: 1024
+    
+  ROI_MASK_HEAD:
+    NAME: "MaskRCNNConvUpsampleHead"
+    POOLER_RESOLUTION: 14
+    POOLER_SAMPLING_RATIO: 2  # Better sampling for small objects
+    NUM_CONV: 4
+    CONV_DIM: 256
+
+  # Pre-trained weights
+  WEIGHTS: "detectron2://COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x/137849600/model_final_f10217.pkl"
+  PIXEL_MEAN: [103.530, 116.280, 123.675]
+  PIXEL_STD: [1.0, 1.0, 1.0]
+
+DATASETS:
+  TRAIN: ("pineapple_train",)
+  TEST: ("pineapple_val",)
+
+# Data loading optimized for high annotation density
+DATALOADER:
+  NUM_WORKERS: 4  # RTX 3070 optimized
+  FILTER_EMPTY_ANNOTATIONS: False  # Keep all images (no empty annotations in our dataset)
+  REPEAT_THRESHOLD: 0.0
+  SAMPLER_TRAIN: "TrainingSampler"
+  ASPECT_RATIO_GROUPING: True  # Group similar aspect ratios for efficiency
+
+# Input configuration for native resolution
+INPUT:
+  MIN_SIZE_TRAIN: [800, 900, 1000, 1100, 1200]  # Multi-scale training for robustness
+  MAX_SIZE_TRAIN: 1368  # Native width
+  MIN_SIZE_TEST: 1000
+  MAX_SIZE_TEST: 1368
+  FORMAT: "BGR"
+  MASK_FORMAT: "polygon"
+  
+  # No cropping to preserve high annotation density
+  CROP:
+    ENABLED: False
+    
+  # Aggressive data augmentation for small dataset
+  RANDOM_FLIP: "horizontal"
+  
+# Solver configuration optimized for RTX 3070 and small dataset
+SOLVER:
+  IMS_PER_BATCH: 2  # Reduced for high annotation density (73+ per image)
+  BASE_LR: 0.0005  # Lower learning rate for small dataset
+  MOMENTUM: 0.9
+  WEIGHT_DECAY: 0.0001
+  WEIGHT_DECAY_NORM: 0.0
+  GAMMA: 0.5  # More gradual decay
+  STEPS: [4000, 6000, 8000]  # Extended schedule for small dataset
+  MAX_ITER: 10000  # More iterations for convergence with small dataset
+  WARMUP_FACTOR: 0.001
+  WARMUP_ITERS: 500  # Longer warmup for stability
+  WARMUP_METHOD: "linear"
+  CHECKPOINT_PERIOD: 1000
+  
+  # Gradient clipping for stability with high annotation density
+  CLIP_GRADIENTS:
+    ENABLED: True
+    CLIP_TYPE: "norm"
+    CLIP_VALUE: 1.0
+    NORM_TYPE: 2.0
+    
+  # Learning rate scheduler
+  LR_SCHEDULER_NAME: "WarmupMultiStepLR"
+  
+  # Mixed precision training - crucial for RTX 3070 memory optimization
+  AMP:
+    ENABLED: True
+
+# Testing and evaluation
+TEST:
+  EVAL_PERIOD: 1000  # Evaluate every 1000 iterations
+  EXPECTED_RESULTS: []
+  KEYPOINT_OKS_SIGMAS: []
+  DETECTIONS_PER_IMAGE: 100  # Allow up to 100 detections per image for high density
+
+# Output directory
+OUTPUT_DIR: "./outputs/models/pineapple_maskrcnn"
+
+# Reproducibility
+SEED: 42
+
+# Custom configurations for logging and monitoring
+VIS_PERIOD: 500  # Visualize results every 500 iterations 

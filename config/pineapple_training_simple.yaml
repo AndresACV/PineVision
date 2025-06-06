@@ -1,0 +1,158 @@
+# Pineapple Detection Training Configuration - Complete Standalone Version
+# Optimized for high annotation density, RTX 3070, and small objects
+
+MODEL:
+  META_ARCHITECTURE: "GeneralizedRCNN"
+  
+  BACKBONE:
+    NAME: "build_resnet_fpn_backbone"
+    FREEZE_AT: 2
+  RESNETS:
+    DEPTH: 50
+    NUM_GROUPS: 1
+    WIDTH_PER_GROUP: 64
+    STEM_OUT_CHANNELS: 64
+    RES2_OUT_CHANNELS: 256
+    STRIDE_IN_1X1: True
+    NORM: "FrozenBN"
+    OUT_FEATURES: ["res2", "res3", "res4", "res5"]
+  FPN:
+    IN_FEATURES: ["res2", "res3", "res4", "res5"]
+    OUT_CHANNELS: 256
+    NORM: ""
+    FUSE_TYPE: "sum"
+  
+  # Optimize anchors for small pineapples (avg 148.63 pixels²)
+  ANCHOR_GENERATOR:
+    NAME: "DefaultAnchorGenerator"
+    SIZES: [[16], [32], [64], [128], [256]]
+    ASPECT_RATIOS: [[0.5, 1.0, 2.0]]
+  
+  # RPN optimization for high annotation density
+  RPN:
+    IN_FEATURES: ["p2", "p3", "p4", "p5", "p6"]
+    HEAD_NAME: "StandardRPNHead"
+    IOU_THRESHOLDS: [0.3, 0.7]
+    IOU_LABELS: [0, -1, 1]
+    BBOX_REG_LOSS_TYPE: "smooth_l1"
+    BBOX_REG_LOSS_WEIGHT: 1.0
+    BBOX_REG_WEIGHTS: [1.0, 1.0, 1.0, 1.0]
+    PRE_NMS_TOPK_TRAIN: 4000
+    POST_NMS_TOPK_TRAIN: 2000
+    PRE_NMS_TOPK_TEST: 2000
+    POST_NMS_TOPK_TEST: 1000
+    NMS_THRESH: 0.6
+    BATCH_SIZE_PER_IMAGE: 512
+    POSITIVE_FRACTION: 0.5
+    SMOOTH_L1_BETA: 0.0
+    LOSS_WEIGHT: 1.0
+  
+  # ROI heads optimized for small objects and high density
+  ROI_HEADS:
+    NAME: "StandardROIHeads"
+    IN_FEATURES: ["p2", "p3", "p4", "p5"]
+    NUM_CLASSES: 1  # Only pineapple class
+    IOU_THRESHOLDS: [0.5]
+    IOU_LABELS: [0, 1]
+    BATCH_SIZE_PER_IMAGE: 1024  # Increased for high annotation density
+    POSITIVE_FRACTION: 0.5
+    SCORE_THRESH_TEST: 0.3  # Lower threshold for small objects
+    NMS_THRESH_TEST: 0.4    # Lower NMS for dense detections
+    
+    ROI_BOX_HEAD:
+    NAME: "FastRCNNConvFCHead"
+    NUM_FC: 2
+    FC_DIM: 1024
+    NUM_CONV: 0
+    CONV_DIM: 256
+    NORM: ""
+    CLS_AGNOSTIC_BBOX_REG: False
+    SMOOTH_L1_BETA: 0.0
+    BBOX_REG_LOSS_TYPE: "smooth_l1"
+    BBOX_REG_LOSS_WEIGHT: 1.0
+    BBOX_REG_WEIGHTS: [10.0, 10.0, 5.0, 5.0]
+    POOLER_RESOLUTION: 7
+    POOLER_SAMPLING_RATIO: 2  # Better sampling for small objects
+    POOLER_TYPE: "ROIAlignV2"
+      
+  ROI_MASK_HEAD:
+    NAME: "MaskRCNNConvUpsampleHead"
+    NUM_CONV: 4
+    CONV_DIM: 256
+    NORM: ""
+    CLS_AGNOSTIC_MASK: False
+    POOLER_RESOLUTION: 14
+    POOLER_SAMPLING_RATIO: 2
+    POOLER_TYPE: "ROIAlignV2"
+
+  # Pre-trained weights from COCO - using instance segmentation model with generated masks
+  WEIGHTS: "detectron2://COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x/137849600/model_final_f10217.pkl"
+  MASK_ON: True  # Enable mask training with generated elliptical segmentation masks
+  KEYPOINT_ON: False
+  LOAD_PROPOSALS: False
+
+DATASETS:
+  TRAIN: ("pineapple_train_masked",)
+  TEST: ("pineapple_val_masked",)
+
+DATALOADER:
+  NUM_WORKERS: 4
+  ASPECT_RATIO_GROUPING: True
+  FILTER_EMPTY_ANNOTATIONS: False
+  REPEAT_THRESHOLD: 0.0
+  SAMPLER_TRAIN: "TrainingSampler"
+
+# Input configuration for native resolution
+INPUT:
+  MIN_SIZE_TRAIN: [800, 900, 1000, 1100, 1200]
+  MAX_SIZE_TRAIN: 1368
+  MIN_SIZE_TEST: 1000
+  MAX_SIZE_TEST: 1368
+  FORMAT: "BGR"
+  MASK_FORMAT: "polygon"
+  CROP:
+    ENABLED: False
+  RANDOM_FLIP: "horizontal"
+
+# Solver optimized for RTX 3070 and small dataset
+SOLVER:
+  IMS_PER_BATCH: 4  # Increased to utilize full RTX 3070 8GB VRAM with masks
+  BASE_LR: 0.0005   # Lower LR for small dataset
+  MOMENTUM: 0.9
+  WEIGHT_DECAY: 0.0001
+  WEIGHT_DECAY_NORM: 0.0
+  GAMMA: 0.5
+  STEPS: [4000, 6000, 8000]
+  MAX_ITER: 10000
+  WARMUP_FACTOR: 0.001
+  WARMUP_ITERS: 500
+  WARMUP_METHOD: "linear"
+  CHECKPOINT_PERIOD: 1000
+  LR_SCHEDULER_NAME: "WarmupMultiStepLR"
+  
+  # Gradient clipping for stability with high annotation density
+  CLIP_GRADIENTS:
+    ENABLED: True
+    CLIP_TYPE: "norm"
+    CLIP_VALUE: 1.0
+    NORM_TYPE: 2.0
+  
+  # Mixed precision for memory optimization
+  AMP:
+    ENABLED: True
+
+# Testing configuration
+TEST:
+  EVAL_PERIOD: 1000
+  EXPECTED_RESULTS: []
+  KEYPOINT_OKS_SIGMAS: []
+  DETECTIONS_PER_IMAGE: 100  # Allow more detections for high density
+
+# Output directory
+OUTPUT_DIR: "./outputs/models/pineapple_maskrcnn"
+
+# Reproducibility
+SEED: 42
+
+# Visualization
+VIS_PERIOD: 500 

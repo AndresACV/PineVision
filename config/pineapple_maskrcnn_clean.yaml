@@ -1,0 +1,104 @@
+# Clean Pineapple Mask R-CNN Configuration
+# Optimized for RTX 3070 8GB with generated elliptical masks
+
+VERSION: 2
+
+MODEL:
+  META_ARCHITECTURE: "GeneralizedRCNN"
+  BACKBONE:
+    NAME: "build_resnet_fpn_backbone"
+  RESNETS:
+    DEPTH: 50
+    OUT_FEATURES: ["res2", "res3", "res4", "res5"]
+  FPN:
+    IN_FEATURES: ["res2", "res3", "res4", "res5"]
+  
+  # Anchors for small pineapples
+  ANCHOR_GENERATOR:
+    SIZES: [[16], [32], [64], [128], [256]]
+    ASPECT_RATIOS: [[0.5, 1.0, 2.0]]
+  
+  RPN:
+    IN_FEATURES: ["p2", "p3", "p4", "p5", "p6"]
+    PRE_NMS_TOPK_TRAIN: 4000
+    POST_NMS_TOPK_TRAIN: 2000
+    PRE_NMS_TOPK_TEST: 2000
+    POST_NMS_TOPK_TEST: 1000
+    NMS_THRESH: 0.6
+    BATCH_SIZE_PER_IMAGE: 512
+    POSITIVE_FRACTION: 0.5
+    
+  ROI_HEADS:
+    NAME: "StandardROIHeads"
+    IN_FEATURES: ["p2", "p3", "p4", "p5"]
+    NUM_CLASSES: 1
+    BATCH_SIZE_PER_IMAGE: 1024
+    POSITIVE_FRACTION: 0.5
+    SCORE_THRESH_TEST: 0.3
+    NMS_THRESH_TEST: 0.4
+    
+  ROI_BOX_HEAD:
+    NAME: "FastRCNNConvFCHead"
+    NUM_FC: 2
+    FC_DIM: 1024
+    POOLER_RESOLUTION: 7
+    POOLER_SAMPLING_RATIO: 2
+    POOLER_TYPE: "ROIAlignV2"
+    
+  ROI_MASK_HEAD:
+    NAME: "MaskRCNNConvUpsampleHead"
+    NUM_CONV: 4
+    CONV_DIM: 256
+    POOLER_RESOLUTION: 14
+    POOLER_SAMPLING_RATIO: 2
+    POOLER_TYPE: "ROIAlignV2"
+
+  # Mask R-CNN weights with masks enabled
+  WEIGHTS: "detectron2://COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x/137849600/model_final_f10217.pkl"
+  MASK_ON: True
+  KEYPOINT_ON: False
+
+DATASETS:
+  TRAIN: ("pineapple_train_masked",)
+  TEST: ("pineapple_val_masked",)
+
+DATALOADER:
+  NUM_WORKERS: 4
+  ASPECT_RATIO_GROUPING: True
+
+INPUT:
+  MIN_SIZE_TRAIN: [800, 900, 1000, 1100, 1200]
+  MAX_SIZE_TRAIN: 1368
+  MIN_SIZE_TEST: 1000
+  MAX_SIZE_TEST: 1368
+  FORMAT: "BGR"
+  MASK_FORMAT: "polygon"
+  RANDOM_FLIP: "horizontal"
+
+SOLVER:
+  IMS_PER_BATCH: 4
+  BASE_LR: 0.0005
+  MOMENTUM: 0.9
+  WEIGHT_DECAY: 0.0001
+  GAMMA: 0.5
+  STEPS: [4000, 6000, 8000]
+  MAX_ITER: 10000
+  WARMUP_FACTOR: 0.001
+  WARMUP_ITERS: 500
+  WARMUP_METHOD: "linear"
+  CHECKPOINT_PERIOD: 1000
+  LR_SCHEDULER_NAME: "WarmupMultiStepLR"
+  CLIP_GRADIENTS:
+    ENABLED: True
+    CLIP_TYPE: "norm"
+    CLIP_VALUE: 1.0
+    NORM_TYPE: 2.0
+  AMP:
+    ENABLED: True
+
+TEST:
+  EVAL_PERIOD: 1000
+  DETECTIONS_PER_IMAGE: 100
+
+OUTPUT_DIR: "./outputs/models/pineapple_maskrcnn"
+SEED: 42 

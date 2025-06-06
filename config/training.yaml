@@ -1,0 +1,54 @@
+# Training Configuration for Pineapple Detection
+# Optimized for RTX 3070 and 176-image dataset
+
+SOLVER:
+  IMS_PER_BATCH: 4  # Optimized for 1368x912 images on RTX 3070
+  BASE_LR: 0.001
+  MOMENTUM: 0.9
+  WEIGHT_DECAY: 0.0001
+  GAMMA: 0.1
+  STEPS: [3000, 5000]  # Adjusted for smaller dataset
+  MAX_ITER: 7000  # Reduced for 176 images
+  WARMUP_FACTOR: 0.001
+  WARMUP_ITERS: 200  # Shorter warmup for small dataset
+  WARMUP_METHOD: "linear"
+  CHECKPOINT_PERIOD: 500  # More frequent checkpoints
+  CLIP_GRADIENTS:
+    ENABLED: True
+    CLIP_TYPE: "value"
+    CLIP_VALUE: 1.0
+
+DATALOADER:
+  NUM_WORKERS: 4
+  FILTER_EMPTY_ANNOTATIONS: True
+  REPEAT_THRESHOLD: 0.0
+
+INPUT:
+  MIN_SIZE_TRAIN: (912, 1368)  # Native resolution support
+  MAX_SIZE_TRAIN: 1368
+  MIN_SIZE_TEST: 912
+  MAX_SIZE_TEST: 1368
+  FORMAT: "BGR"
+  CROP:
+    ENABLED: False  # Disable cropping to preserve full image
+  
+# Dataset configuration
+DATASETS:
+  TRAIN: ("pineapple_train",)
+  TEST: ("pineapple_val",)
+
+# Model evaluation
+TEST:
+  EVAL_PERIOD: 500  # Evaluate every 500 iterations
+  EXPECTED_RESULTS: []
+  KEYPOINT_OKS_SIGMAS: []
+
+# Output configuration
+OUTPUT_DIR: "./outputs/models"
+
+# Mixed precision training for RTX 3070
+AMP:
+  ENABLED: True
+
+# Seed for reproducibility
+SEED: 42 
